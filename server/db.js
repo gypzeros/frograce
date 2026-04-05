@@ -1,79 +1,82 @@
-const Database = require("better-sqlite3");
+const fs = require("fs");
 const path = require("path");
 
-const db = new Database(path.join(__dirname, "frograce.db"));
+const DB_PATH = path.join(__dirname, "frograce.json");
 
-// Crear tabla
-db.exec(`
-  CREATE TABLE IF NOT EXISTS players (
-    device_id TEXT PRIMARY KEY,
-    nickname TEXT DEFAULT 'Anonymous',
-    rating INTEGER DEFAULT 0,
-    wins INTEGER DEFAULT 0,
-    losses INTEGER DEFAULT 0,
-    games_played INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now')),
-    last_seen TEXT DEFAULT (datetime('now'))
-  )
-`);
+function loadDb() {
+  try {
+    if (fs.existsSync(DB_PATH)) {
+      return JSON.parse(fs.readFileSync(DB_PATH, "utf8"));
+    }
+  } catch {}
+  return { players: {} };
+}
+
+function saveDb(data) {
+  fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+}
 
 function getOrCreatePlayer(deviceId) {
-  let player = db.prepare("SELECT * FROM players WHERE device_id = ?").get(deviceId);
-  if (!player) {
-    db.prepare("INSERT INTO players (device_id) VALUES (?)").run(deviceId);
-    player = db.prepare("SELECT * FROM players WHERE device_id = ?").get(deviceId);
+  const data = loadDb();
+  if (!data.players[deviceId]) {
+    data.players[deviceId] = {
+      device_id: deviceId,
+      nickname: "Anonymous",
+      rating: 0,
+      wins: 0,
+      losses: 0,
+      games_played: 0,
+      created_at: new Date().toISOString(),
+      last_seen: new Date().toISOString(),
+    };
+    saveDb(data);
   } else {
-    db.prepare("UPDATE players SET last_seen = datetime('now') WHERE device_id = ?").run(deviceId);
+    data.players[deviceId].last_seen = new Date().toISOString();
+    saveDb(data);
   }
-  return player;
+  return data.players[deviceId];
 }
 
 function updateAfterMatch(winnerDeviceId, loserDeviceId) {
-  const updateWinner = db.prepare(`
-    UPDATE players SET
-      rating = rating + 20,
-      wins = wins + 1,
-      games_played = games_played + 1,
-      last_seen = datetime('now')
-    WHERE device_id = ?
-  `);
-
-  const updateLoser = db.prepare(`
-    UPDATE players SET
-      rating = MAX(0, rating - 20),
-      losses = losses + 1,
-      games_played = games_played + 1,
-      last_seen = datetime('now')
-    WHERE device_id = ?
-  `);
-
-  const transaction = db.transaction(() => {
-    updateWinner.run(winnerDeviceId);
-    updateLoser.run(loserDeviceId);
-  });
-
-  transaction();
+  const data = loadDb();
+  const winner = data.players[winnerDeviceId];
+  const loser = data.players[loserDeviceId];
+  if (winner) {
+    winner.rating += 20;
+    winner.wins += 1;
+    winner.games_played += 1;
+    winner.last_seen = new Date().toISOString();
+  }
+  if (loser) {
+    loser.rating = Math.max(0, loser.rating - 20);
+    loser.losses += 1;
+    loser.games_played += 1;
+    loser.last_seen = new Date().toISOString();
+  }
+  saveDb(data);
 }
 
 function getLeaderboard(limit = 100) {
-  return db.prepare(`
-    SELECT device_id, nickname, rating, wins, losses, games_played
-    FROM players
-    ORDER BY rating DESC
-    LIMIT ?
-  `).all(limit);
+  const data = loadDb();
+  return Object.values(data.players)
+    .sort((a, b) => b.rating - a.rating)
+    .slice(0, limit);
 }
 
 function getPlayerStats(deviceId) {
-  return db.prepare("SELECT * FROM players WHERE device_id = ?").get(deviceId);
+  const data = loadDb();
+  return data.players[deviceId] || null;
 }
 
 function getGlobalStats() {
-  const totalPlayers = db.prepare("SELECT COUNT(*) as count FROM players").get().count;
-  const totalGames = db.prepare("SELECT SUM(games_played) / 2 as count FROM players").get().count || 0;
-  const activeLast24h = db.prepare(
-    "SELECT COUNT(*) as count FROM players WHERE last_seen > datetime('now', '-1 day')"
-  ).get().count;
+  const data = loadDb();
+  const players = Object.values(data.players);
+  const totalPlayers = players.length;
+  const totalGames = Math.floor(players.reduce((sum, p) => sum + p.games_played, 0) / 2);
+  const now = Date.now();
+  const activeLast24h = players.filter(
+    (p) => now - new Date(p.last_seen).getTime() < 86400000
+  ).length;
   return { totalPlayers, totalGames, activeLast24h };
 }
 
