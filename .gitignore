@@ -5,6 +5,7 @@ exports/
 *.import
 
 # Server
+node_modules/
 server/node_modules/
 server/frograce.db
 server/frograce.json

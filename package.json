@@ -2,10 +2,13 @@
   "name": "frograce",
   "version": "1.0.0",
   "scripts": {
-    "start": "node server/index.js",
-    "install": "cd server && npm install"
+    "start": "node server/index.js"
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "ws": "^8.20.0"
   }
 }
