@@ -435,7 +435,7 @@ function handleScored(ws) {
   }
 }
 
-server.listen(PORT, () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`[Frog Race Server] WebSocket + Dashboard on port ${PORT} (${TICK_RATE} ticks/s)`);
-  console.log(`[Dashboard] http://localhost:${PORT}`);
+  console.log(`[Dashboard] http://0.0.0.0:${PORT}`);
 });
