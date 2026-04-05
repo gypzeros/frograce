@@ -1,0 +1,43 @@
+[gd_scene format=3 uid="uid://dvg37wb3s4eqq"]
+
+[ext_resource type="Script" path="res://scripts/game.gd" id="1_game"]
+[ext_resource type="Script" path="res://scripts/map.gd" id="2_map"]
+[ext_resource type="Script" path="res://scripts/obstacle_manager.gd" id="3_obs"]
+[ext_resource type="Script" path="res://scripts/camera.gd" id="4_cam"]
+[ext_resource type="Script" path="res://scripts/world_env.gd" id="5_env"]
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1_game")
+
+[node name="Camera" type="Camera3D" parent="."]
+transform = Transform3D(0.94264, -0.23518, 0.23518, 0, 0.70711, 0.70711, -0.33272, -0.66672, 0.66672, 18.5, 14, 18)
+projection = 1
+current = true
+size = 12.0
+near = 0.1
+far = 100.0
+keep_aspect = 1
+script = ExtResource("4_cam")
+
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.70711, -0.5, 0.5, 0, 0.70711, 0.70711, -0.70711, -0.5, 0.5, 0, 10, 0)
+light_energy = 0.6
+shadow_enabled = true
+
+[node name="Map" type="Node3D" parent="."]
+script = ExtResource("2_map")
+
+[node name="Obstacles" type="Node3D" parent="."]
+script = ExtResource("3_obs")
+
+[node name="Players" type="Node3D" parent="."]
+
+[node name="Player1" type="Node3D" parent="Players"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.5, 0.35, 14.5)
+
+[node name="Player2" type="Node3D" parent="Players"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.5, 0.35, 1.5)
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+script = ExtResource("5_env")

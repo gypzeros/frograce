@@ -1,0 +1,13 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+exports/
+*.import
+
+# Server
+server/node_modules/
+server/frograce.db
+
+# OS
+.DS_Store
+Thumbs.db

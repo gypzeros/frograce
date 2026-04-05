@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frog Race - Leaderboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; padding: 20px; }
+  h1 { text-align: center; color: #A6C927; font-size: 2.5em; margin-bottom: 5px; }
+  .subtitle { text-align: center; color: #888; margin-bottom: 30px; }
+  .stats-bar { display: flex; justify-content: center; gap: 40px; margin-bottom: 30px; flex-wrap: wrap; }
+  .stat { text-align: center; }
+  .stat-value { font-size: 2em; font-weight: bold; color: #74DBFF; }
+  .stat-label { font-size: 0.8em; color: #888; text-transform: uppercase; }
+  .search { text-align: center; margin-bottom: 20px; }
+  .search input { padding: 10px 20px; border-radius: 8px; border: 2px solid #333; background: #16213e; color: #eee; font-size: 1em; width: 300px; max-width: 90%; }
+  .search input:focus { outline: none; border-color: #A6C927; }
+  table { width: 100%; max-width: 800px; margin: 0 auto; border-collapse: collapse; }
+  th { background: #16213e; padding: 12px 15px; text-align: left; color: #888; text-transform: uppercase; font-size: 0.8em; }
+  td { padding: 10px 15px; border-bottom: 1px solid #222; }
+  tr:hover td { background: #16213e; }
+  .rank { font-weight: bold; width: 50px; }
+  .rating { font-weight: bold; }
+  .rating.bronze { color: #cd7f32; }
+  .rating.silver { color: #c0c0c0; }
+  .rating.gold { color: #ffd700; }
+  .rating.diamond { color: #b9f2ff; }
+  .winrate { color: #888; }
+  .player-card { max-width: 400px; margin: 0 auto 20px; background: #16213e; border-radius: 12px; padding: 20px; display: none; }
+  .player-card h3 { color: #A6C927; margin-bottom: 10px; }
+  .player-card .row { display: flex; justify-content: space-between; padding: 5px 0; }
+</style>
+</head>
+<body>
+
+<h1>🐸 FROG RACE</h1>
+<p class="subtitle">Leaderboard</p>
+
+<div class="stats-bar">
+  <div class="stat"><div class="stat-value" id="totalPlayers">-</div><div class="stat-label">Players</div></div>
+  <div class="stat"><div class="stat-value" id="totalGames">-</div><div class="stat-label">Games Played</div></div>
+  <div class="stat"><div class="stat-value" id="activePlayers">-</div><div class="stat-label">Active (24h)</div></div>
+</div>
+
+<div class="search">
+  <input type="text" id="searchInput" placeholder="Search by Device ID...">
+</div>
+
+<div class="player-card" id="playerCard">
+  <h3 id="pcName">Player</h3>
+  <div class="row"><span>Rating</span><span id="pcRating">0</span></div>
+  <div class="row"><span>Wins</span><span id="pcWins">0</span></div>
+  <div class="row"><span>Losses</span><span id="pcLosses">0</span></div>
+  <div class="row"><span>Games</span><span id="pcGames">0</span></div>
+  <div class="row"><span>Win Rate</span><span id="pcWinrate">0%</span></div>
+</div>
+
+<table>
+  <thead>
+    <tr><th class="rank">#</th><th>Player</th><th>Rating</th><th>W/L</th><th>Games</th><th>Win %</th></tr>
+  </thead>
+  <tbody id="leaderboard"></tbody>
+</table>
+
+<script>
+function ratingClass(r) {
+  if (r >= 500) return 'diamond';
+  if (r >= 300) return 'gold';
+  if (r >= 100) return 'silver';
+  return 'bronze';
+}
+
+async function loadStats() {
+  const res = await fetch('/api/stats');
+  const s = await res.json();
+  document.getElementById('totalPlayers').textContent = s.totalPlayers;
+  document.getElementById('totalGames').textContent = s.totalGames;
+  document.getElementById('activePlayers').textContent = s.activeLast24h;
+}
+
+async function loadLeaderboard() {
+  const res = await fetch('/api/leaderboard');
+  const players = await res.json();
+  const tbody = document.getElementById('leaderboard');
+  tbody.innerHTML = players.map((p, i) => {
+    const wr = p.games_played > 0 ? Math.round(p.wins / p.games_played * 100) : 0;
+    const cls = ratingClass(p.rating);
+    const name = p.device_id.substring(0, 8) + '...';
+    return `<tr>
+      <td class="rank">${i + 1}</td>
+      <td>${name}</td>
+      <td class="rating ${cls}">${p.rating}</td>
+      <td>${p.wins}/${p.losses}</td>
+      <td>${p.games_played}</td>
+      <td class="winrate">${wr}%</td>
+    </tr>`;
+  }).join('');
+}
+
+document.getElementById('searchInput').addEventListener('keyup', async (e) => {
+  const id = e.target.value.trim();
+  const card = document.getElementById('playerCard');
+  if (id.length < 4) { card.style.display = 'none'; return; }
+  try {
+    const res = await fetch('/api/player/' + id);
+    if (!res.ok) { card.style.display = 'none'; return; }
+    const p = await res.json();
+    const wr = p.games_played > 0 ? Math.round(p.wins / p.games_played * 100) : 0;
+    document.getElementById('pcName').textContent = p.device_id.substring(0, 12) + '...';
+    document.getElementById('pcRating').textContent = p.rating;
+    document.getElementById('pcWins').textContent = p.wins;
+    document.getElementById('pcLosses').textContent = p.losses;
+    document.getElementById('pcGames').textContent = p.games_played;
+    document.getElementById('pcWinrate').textContent = wr + '%';
+    card.style.display = 'block';
+  } catch { card.style.display = 'none'; }
+});
+
+loadStats();
+loadLeaderboard();
+setInterval(() => { loadStats(); loadLeaderboard(); }, 10000);
+</script>
+</body>
+</html>
