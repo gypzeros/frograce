@@ -11,3 +11,5 @@ server/frograce.db
 # OS
 .DS_Store
 Thumbs.db
+*.apk
+*.idsig
