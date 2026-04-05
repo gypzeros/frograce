@@ -13,7 +13,7 @@ signal score_updated(player_num: int, score: int)
 signal game_over(winner: int)
 signal connection_failed
 
-const SERVER_URL = "ws://localhost:3000"
+const SERVER_URL = "wss://frograce-production.up.railway.app"
 
 var socket: WebSocketPeer
 var _connected := false
